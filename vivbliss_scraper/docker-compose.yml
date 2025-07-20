@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: vivbliss_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  vivbliss-scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vivbliss_scraper
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DATABASE=${MONGO_DATABASE:-vivbliss_db}
+      - SCRAPY_LOG_LEVEL=${SCRAPY_LOG_LEVEL:-INFO}
+    env_file:
+      - .env.docker
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    command: ["python", "-m", "scrapy", "crawl", "vivbliss"]
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local

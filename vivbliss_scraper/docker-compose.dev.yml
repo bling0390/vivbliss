@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: vivbliss_mongodb_dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_dev_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: devpassword
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  vivbliss-scraper-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vivbliss_scraper_dev
+    restart: "no"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DATABASE=vivbliss_dev_db
+      - SCRAPY_LOG_LEVEL=DEBUG
+      - PYTHONPATH=/app
+    volumes:
+      # 挂载源代码用于开发
+      - ./vivbliss_scraper:/app/vivbliss_scraper
+      - ./tests:/app/tests
+      - ./scripts:/app/scripts
+      - ./logs:/app/logs
+      - ./data:/app/data
+    working_dir: /app
+    command: ["sleep", "infinity"]  # 保持容器运行用于开发
+
+volumes:
+  mongodb_dev_data:
+    driver: local
