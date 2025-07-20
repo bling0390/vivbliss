@@ -1,6 +1,7 @@
 """
 Scheduler configuration module for APScheduler setup and management.
 """
+import os
 from typing import Dict, Any, Optional
 
 
@@ -113,3 +114,63 @@ class SchedulerConfig:
                 'max_instances': 3
             }
         }
+    
+    @classmethod
+    def from_environment(cls, env_vars: Optional[Dict[str, str]] = None) -> 'SchedulerConfig':
+        """
+        Create SchedulerConfig from environment variables.
+        
+        Args:
+            env_vars: Dictionary of environment variables. If None, uses os.environ
+            
+        Returns:
+            SchedulerConfig instance
+        """
+        if env_vars is None:
+            env_vars = dict(os.environ)
+        
+        # Map environment variables to config parameters
+        timezone = env_vars.get('SCHEDULER_TIMEZONE', 'UTC')
+        job_store_type = env_vars.get('SCHEDULER_JOB_STORE', 'memory').lower()
+        executor_type = env_vars.get('SCHEDULER_EXECUTOR_TYPE', 'threadpool').lower()
+        
+        max_workers = int(env_vars.get('SCHEDULER_MAX_WORKERS', '5'))
+        misfire_grace_time = int(env_vars.get('SCHEDULER_MISFIRE_GRACE_TIME', '60'))
+        
+        mongodb_uri = (env_vars.get('SCHEDULER_MONGODB_URI') or
+                      env_vars.get('MONGODB_URI') or
+                      env_vars.get('MONGO_URI'))
+        
+        mongodb_database = env_vars.get('SCHEDULER_MONGODB_DATABASE', 'scheduler_db')
+        
+        return cls(
+            timezone=timezone,
+            job_store_type=job_store_type,
+            executor_type=executor_type,
+            max_workers=max_workers,
+            misfire_grace_time=misfire_grace_time,
+            mongodb_uri=mongodb_uri,
+            mongodb_database=mongodb_database
+        )
+    
+    @classmethod
+    def from_compose_file(cls, compose_file_path: str, service_name: Optional[str] = None) -> 'SchedulerConfig':
+        """
+        Create SchedulerConfig from Docker Compose file.
+        
+        Args:
+            compose_file_path: Path to docker-compose.yml file
+            service_name: Service name to extract config from (optional)
+            
+        Returns:
+            SchedulerConfig instance
+        """
+        from ..config import EnvironmentExtractor
+        
+        extractor = EnvironmentExtractor()
+        extractor.load_from_compose(compose_file_path, service_name)
+        
+        # Get all environment variables for broader compatibility
+        all_env = extractor.get_environment()
+        
+        return cls.from_environment(all_env)
