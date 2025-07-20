@@ -18,10 +18,18 @@ CONCURRENT_REQUESTS = 16
 
 ITEM_PIPELINES = {
     'vivbliss_scraper.pipelines.MongoDBPipeline': 300,
+    'vivbliss_scraper.telegram.pipeline.TelegramUploadPipeline': 400,
 }
 
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 MONGO_DATABASE = os.getenv('MONGO_DATABASE', 'vivbliss_db')
+
+# Telegram Configuration
+TELEGRAM_API_ID = os.getenv('TELEGRAM_API_ID')
+TELEGRAM_API_HASH = os.getenv('TELEGRAM_API_HASH')
+TELEGRAM_SESSION_NAME = os.getenv('TELEGRAM_SESSION_NAME', 'vivbliss_bot')
+TELEGRAM_CHAT_ID = int(os.getenv('TELEGRAM_CHAT_ID', '0'))
+TELEGRAM_ENABLE_UPLOAD = os.getenv('TELEGRAM_ENABLE_UPLOAD', 'True').lower() == 'true'
 
 DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
