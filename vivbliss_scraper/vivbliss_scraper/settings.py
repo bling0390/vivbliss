@@ -28,6 +28,7 @@ MONGO_DATABASE = os.getenv('MONGO_DATABASE', 'vivbliss_db')
 TELEGRAM_API_ID = os.getenv('TELEGRAM_API_ID')
 TELEGRAM_API_HASH = os.getenv('TELEGRAM_API_HASH')
 TELEGRAM_SESSION_NAME = os.getenv('TELEGRAM_SESSION_NAME', 'vivbliss_bot')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')  # Optional: For bot authentication
 TELEGRAM_CHAT_ID = int(os.getenv('TELEGRAM_CHAT_ID', '0'))
 TELEGRAM_ENABLE_UPLOAD = os.getenv('TELEGRAM_ENABLE_UPLOAD', 'True').lower() == 'true'
 

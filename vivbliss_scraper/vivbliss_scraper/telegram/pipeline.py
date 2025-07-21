@@ -20,7 +20,8 @@ class TelegramUploadPipeline:
                  api_hash: str, 
                  session_name: str,
                  chat_id: int,
-                 enable_upload: bool = True):
+                 enable_upload: bool = True,
+                 bot_token: Optional[str] = None):
         """
         Initialize Telegram upload pipeline.
         
@@ -30,12 +31,14 @@ class TelegramUploadPipeline:
             session_name: Pyrogram session name
             chat_id: Telegram chat ID to upload files to
             enable_upload: Whether to enable actual uploads (useful for testing)
+            bot_token: Optional bot token for bot authentication
         """
         self.api_id = api_id
         self.api_hash = api_hash
         self.session_name = session_name
         self.chat_id = chat_id
         self.enable_upload = enable_upload
+        self.bot_token = bot_token
         
         self.config: Optional[TelegramConfig] = None
         self.client = None
@@ -56,7 +59,8 @@ class TelegramUploadPipeline:
             api_hash=crawler.settings.get('TELEGRAM_API_HASH'),
             session_name=crawler.settings.get('TELEGRAM_SESSION_NAME', 'vivbliss_bot'),
             chat_id=crawler.settings.get('TELEGRAM_CHAT_ID'),
-            enable_upload=crawler.settings.get('TELEGRAM_ENABLE_UPLOAD', True)
+            enable_upload=crawler.settings.get('TELEGRAM_ENABLE_UPLOAD', True),
+            bot_token=crawler.settings.get('TELEGRAM_BOT_TOKEN')
         )
     
     async def open_spider(self, spider):
@@ -70,7 +74,8 @@ class TelegramUploadPipeline:
             self.config = TelegramConfig(
                 api_id=self.api_id,
                 api_hash=self.api_hash,
-                session_name=self.session_name
+                session_name=self.session_name,
+                bot_token=self.bot_token
             )
             
             # Create and start client
