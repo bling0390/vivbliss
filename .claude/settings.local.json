@@ -1,8 +1,26 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "Bash(python -m pytest tests/test_wait_for_mongo.py -v)",
+      "Bash(python3 -m pytest tests/test_wait_for_mongo.py -v)",
+      "Bash(python3:*)",
+      "Bash(rm:*)",
+      "Bash(ls:*)",
+      "Bash(true)",
+      "Bash(git commit:*)",
+      "WebFetch(domain:vivbliss.com)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(echo:*)",
+      "Bash(python -m pytest tests/test_media_extraction.py::TestMediaExtraction::test_extract_images_from_article_should_fail_initially -v)",
+      "Bash(python -m pytest tests/test_media_extraction.py::TestMediaExtraction::test_extract_videos_from_article_should_fail_initially -v)"
     ],
-    "deny": []
+    "deny": [],
+    "env": {
+      "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "100000"
+    }
   }
 }

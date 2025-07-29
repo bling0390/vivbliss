@@ -14,6 +14,7 @@ from vivbliss_scraper.utils.spider_helpers import (
     SpiderStats, RequestBuilder, ResponseAnalyzer, LoggingHelper,
     timing_decorator, error_handler
 )
+from vivbliss_scraper.utils.media_extractor import MediaExtractor, MediaValidator
 
 
 class VivblissSpider(scrapy.Spider):
@@ -33,6 +34,8 @@ class VivblissSpider(scrapy.Spider):
         self.category_extractor = CategoryExtractor()
         self.product_extractor = ProductExtractor()
         self.link_discovery = LinkDiscovery()
+        self.media_extractor = MediaExtractor()
+        self.media_validator = MediaValidator()
     
     custom_settings = {
         'DOWNLOAD_DELAY': 2,  # Increased from 1 to 2 seconds
@@ -163,6 +166,13 @@ class VivblissSpider(scrapy.Spider):
                 item['date'] = date.strip() if date else ''
                 item['category'] = category.strip()
                 
+                # 🖼️ 提取媒体内容
+                media_content = self.extract_media_from_article(article, response)
+                item['images'] = media_content.get('images', [])
+                item['videos'] = media_content.get('videos', [])
+                item['media_files'] = item['images'] + item['videos']
+                item['media_count'] = len(item['media_files'])
+                
                 # Log extracted item details
                 self.logger.info(f'✅ 提取文章 #{i}:')
                 self.logger.info(f'   标题: {item["title"][:50]}...' if len(item['title']) > 50 else f'   标题: {item["title"]}')
@@ -170,6 +180,9 @@ class VivblissSpider(scrapy.Spider):
                 self.logger.info(f'   分类: {item["category"]}')
                 self.logger.info(f'   日期: {item["date"]}')
                 self.logger.info(f'   内容长度: {len(item["content"])} 字符')
+                self.logger.info(f'   📷 图片数量: {len(item["images"])}')
+                self.logger.info(f'   🎥 视频数量: {len(item["videos"])}')
+                self.logger.info(f'   📁 媒体总数: {item["media_count"]}')
                 
                 extracted_items += 1
                 self.total_items += 1
@@ -464,3 +477,68 @@ class VivblissSpider(scrapy.Spider):
         })
         
         yield product_item
+    
+    def extract_media_from_article(self, article_selector, response):
+        """从文章选择器中提取媒体内容"""
+        try:
+            # 创建一个临时响应对象用于媒体提取
+            article_html = article_selector.get()
+            if not article_html:
+                return {'images': [], 'videos': []}
+            
+            # 使用媒体提取器提取内容
+            from scrapy.http import HtmlResponse
+            article_response = HtmlResponse(
+                url=response.url,
+                body=article_html.encode('utf-8'),
+                encoding='utf-8'
+            )
+            
+            # 提取图片和视频
+            images = self.extract_images_from_article(article_response)
+            videos = self.extract_videos_from_article(article_response)
+            
+            # 验证媒体URLs
+            validated_images = self.validate_media_urls(images, response)
+            validated_videos = self.validate_media_urls(videos, response)
+            
+            self.logger.debug(f"从文章中提取: {len(validated_images)} 张图片, {len(validated_videos)} 个视频")
+            
+            return {
+                'images': validated_images,
+                'videos': validated_videos
+            }
+            
+        except Exception as e:
+            self.logger.error(f"提取媒体内容时出错: {e}")
+            return {'images': [], 'videos': []}
+    
+    def extract_images_from_article(self, response):
+        """从文章中提取图片URLs"""
+        return self.media_extractor.extract_images_from_response(response)
+    
+    def extract_videos_from_article(self, response):
+        """从文章中提取视频URLs"""
+        return self.media_extractor.extract_videos_from_response(response)
+    
+    def validate_media_urls(self, urls, response):
+        """验证媒体URLs的有效性"""
+        if not urls:
+            return []
+        
+        validated_urls = []
+        for url in urls:
+            try:
+                # 转换为绝对URL
+                absolute_url = response.urljoin(url.strip())
+                
+                # 验证URL格式和类型
+                if (self.media_validator.is_valid_image_url(absolute_url) or 
+                    self.media_validator.is_valid_video_url(absolute_url)):
+                    validated_urls.append(absolute_url)
+                    
+            except Exception as e:
+                self.logger.debug(f"验证媒体URL时出错: {url}, 错误: {e}")
+                continue
+        
+        return validated_urls

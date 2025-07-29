@@ -8,6 +8,12 @@ class VivblissItem(scrapy.Item):
     content = scrapy.Field()
     date = scrapy.Field()
     category = scrapy.Field()
+    
+    # 媒体内容字段
+    images = scrapy.Field()           # 图片URL列表
+    videos = scrapy.Field()           # 视频URL列表  
+    media_files = scrapy.Field()      # 所有媒体文件列表
+    media_count = scrapy.Field()      # 媒体文件总数
 
 
 class CategoryItem(scrapy.Item):
