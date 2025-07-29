@@ -275,6 +275,9 @@ class VivblissSpider(scrapy.Spider):
         # 记录页面处理开始
         LoggingHelper.log_page_processing(self.logger, response, f"分类页面: {category_name}")
         
+        # 记录调度器状态
+        self.log_scheduler_status()
+        
         # 更新统计
         self.stats_manager.increment('responses_received')
         
@@ -359,7 +362,9 @@ class VivblissSpider(scrapy.Spider):
         
         # 🛍️  在当前分类页面中寻找产品
         self.logger.info(f'🛍️  在分类 "{category_name}" 中搜索产品...')
-        for request in self.discover_products(response, category_item['path']):
+        
+        # 获取调度器控制的产品请求
+        for request in self.discover_products_with_priority(response, category_path):
             yield request
         
         # 🔄 处理分类页面分页
@@ -422,6 +427,9 @@ class VivblissSpider(scrapy.Spider):
         
         # 记录页面处理开始
         LoggingHelper.log_page_processing(self.logger, response, f"产品页面")
+        
+        # 记录调度器状态
+        self.log_scheduler_status()
         
         # 更新统计
         self.stats_manager.increment('responses_received')
@@ -542,3 +550,44 @@ class VivblissSpider(scrapy.Spider):
                 continue
         
         return validated_urls
+    
+    def get_next_priority_request(self):
+        """获取下一个优先级请求"""
+        try:
+            return self.priority_scheduler.get_next_request()
+        except Exception as e:
+            self.logger.error(f"获取优先级请求时出错: {e}")
+            return None
+    
+    def log_scheduler_status(self):
+        """记录调度器状态"""
+        try:
+            stats = self.priority_scheduler.get_scheduler_stats()
+            self.logger.info(f"🎯 当前优先目录: {stats.get('current_priority_directory', '无')}")
+            
+            # 显示活跃目录
+            active_dirs = stats.get('active_directories', [])
+            if active_dirs:
+                self.logger.info(f"📁 活跃目录 ({len(active_dirs)}): {', '.join(active_dirs[:3])}{'...' if len(active_dirs) > 3 else ''}")
+                
+        except Exception as e:
+            self.logger.error(f"记录调度器状态时出错: {e}")
+    
+    @timing_decorator
+    @error_handler(default_return=[])
+    def parse_product_with_error_handling(self, response):
+        """带有错误处理的产品解析方法"""
+        try:
+            # 调用原有的产品解析方法
+            for item in self.parse_product(response):
+                yield item
+                
+        except Exception as e:
+            # 处理错误情况
+            self.logger.error(f'❌ 产品页面解析失败: {response.url}, 错误: {e}')
+            
+            # 通知调度器产品处理失败
+            self.priority_scheduler.mark_product_failed(response.url)
+            
+            # 更新统计
+            self.stats_manager.increment('products_failed')
