@@ -16,6 +16,7 @@ from vivbliss_scraper.utils.spider_helpers import (
 )
 from vivbliss_scraper.utils.media_extractor import MediaExtractor, MediaValidator
 from vivbliss_scraper.utils.priority_scheduler import DirectoryPriorityScheduler
+from vivbliss_scraper.utils.bot_notifier import BotNotifier
 
 
 class VivblissSpider(scrapy.Spider):
@@ -41,6 +42,14 @@ class VivblissSpider(scrapy.Spider):
         # 初始化目录优先级调度器
         self.priority_scheduler = DirectoryPriorityScheduler()
         self.logger.info("🎯 目录优先级调度器已初始化")
+        
+        # 初始化Bot通知器
+        settings_dict = getattr(self, 'settings', {}) or kwargs.get('settings', {})
+        self.bot_notifier = BotNotifier.create_from_settings(settings_dict)
+        if self.bot_notifier.is_enabled():
+            self.logger.info("🤖 Bot通知器已初始化并启用")
+        else:
+            self.logger.info("📵 Bot通知器已禁用")
     
     custom_settings = {
         'DOWNLOAD_DELAY': 2,  # Increased from 1 to 2 seconds
@@ -50,6 +59,12 @@ class VivblissSpider(scrapy.Spider):
         'AUTOTHROTTLE_MAX_DELAY': 10,
         'RANDOMIZE_DOWNLOAD_DELAY': 0.5,
         'LOG_LEVEL': 'INFO',
+        
+        # Bot notification settings
+        'ENABLE_BOT_NOTIFICATIONS': True,  # 启用Bot通知
+        'BOT_NOTIFICATION_BATCH_SIZE': 1,  # 每次发送的通知数量
+        'BOT_NOTIFICATION_RETRY_COUNT': 3,  # 发送失败重试次数
+        'BOT_NOTIFICATION_TIMEOUT': 30,  # 发送超时时间（秒）
     }
     
     def start_requests(self):
@@ -177,6 +192,9 @@ class VivblissSpider(scrapy.Spider):
                 item['videos'] = media_content.get('videos', [])
                 item['media_files'] = item['images'] + item['videos']
                 item['media_count'] = len(item['media_files'])
+                
+                # 📤 发送Bot媒体通知
+                self._trigger_media_notification({'item': item})
                 
                 # Log extracted item details
                 self.logger.info(f'✅ 提取文章 #{i}:')
@@ -524,6 +542,9 @@ class VivblissSpider(scrapy.Spider):
             'category_path': category_path
         })
         
+        # 📤 发送Bot媒体通知
+        self._trigger_media_notification({'item': product_item})
+        
         yield product_item
     
     def extract_media_from_article(self, article_selector, response):
@@ -631,3 +652,54 @@ class VivblissSpider(scrapy.Spider):
             
             # 更新统计
             self.stats_manager.increment('products_failed')
+    
+    def _trigger_media_notification(self, context):
+        """触发媒体提取完成的Bot通知"""
+        if not self.bot_notifier.is_enabled():
+            return
+        
+        try:
+            item = context.get('item')
+            if not item:
+                return
+            
+            # 检查是否有媒体内容
+            has_media = (item.get('media_count', 0) > 0 or 
+                        len(item.get('images', [])) > 0 or 
+                        len(item.get('videos', [])) > 0)
+            
+            if has_media:
+                # 获取重试设置
+                retry_count = getattr(self.settings, 'BOT_NOTIFICATION_RETRY_COUNT', 3)
+                
+                # 尝试发送通知，支持重试
+                success = False
+                for attempt in range(retry_count):
+                    try:
+                        success = self.bot_notifier.sync_send_media_notification(item)
+                        if success:
+                            break
+                        else:
+                            if attempt < retry_count - 1:
+                                self.logger.warning(f"📵 Bot通知发送失败，重试 {attempt + 1}/{retry_count}")
+                    except Exception as retry_error:
+                        if attempt < retry_count - 1:
+                            self.logger.warning(f"📵 Bot通知发送异常，重试 {attempt + 1}/{retry_count}: {retry_error}")
+                        else:
+                            raise retry_error
+                
+                if success:
+                    self.logger.info(f"📤 Bot通知发送成功: {item.get('title', item.get('name', '未知项目'))}")
+                    # 更新统计
+                    self.stats_manager.increment('bot_notifications_sent')
+                else:
+                    self.logger.warning(f"📵 Bot通知发送失败（已重试{retry_count}次): {item.get('title', item.get('name', '未知项目'))}")
+                    # 更新统计
+                    self.stats_manager.increment('bot_notifications_failed')
+            else:
+                self.logger.debug(f"⏭️  项目无媒体内容，跳过Bot通知: {item.get('title', item.get('name', '未知项目'))}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ 触发Bot通知时出错: {e}")
+            # 更新统计
+            self.stats_manager.increment('bot_notifications_error')
