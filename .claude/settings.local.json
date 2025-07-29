@@ -16,7 +16,8 @@
       "Bash(cp:*)",
       "Bash(echo:*)",
       "Bash(python -m pytest tests/test_media_extraction.py::TestMediaExtraction::test_extract_images_from_article_should_fail_initially -v)",
-      "Bash(python -m pytest tests/test_media_extraction.py::TestMediaExtraction::test_extract_videos_from_article_should_fail_initially -v)"
+      "Bash(python -m pytest tests/test_media_extraction.py::TestMediaExtraction::test_extract_videos_from_article_should_fail_initially -v)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "env": {

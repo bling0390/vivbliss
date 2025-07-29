@@ -369,7 +369,7 @@ class VivblissSpider(scrapy.Spider):
         self.logger.info(f'🛍️  在分类 "{category_name}" 中搜索产品...')
         
         # 获取调度器控制的产品请求
-        for request in self.discover_products_with_priority(response, category_path):
+        for request in self.discover_products_with_priority(response, category_item['path']):
             yield request
         
         # 🔄 处理分类页面分页
