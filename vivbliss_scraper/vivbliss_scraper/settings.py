@@ -21,8 +21,21 @@ ITEM_PIPELINES = {
     'vivbliss_scraper.telegram.pipeline.TelegramUploadPipeline': 400,
 }
 
-MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
+# MongoDB Configuration
+MONGO_HOST = os.getenv('MONGO_HOST', 'localhost')
+MONGO_PORT = int(os.getenv('MONGO_PORT', '27017'))
+MONGO_USERNAME = os.getenv('MONGO_USERNAME')
+MONGO_PASSWORD = os.getenv('MONGO_PASSWORD')
 MONGO_DATABASE = os.getenv('MONGO_DATABASE', 'vivbliss_db')
+
+# Build MongoDB URI with optional authentication
+if MONGO_USERNAME and MONGO_PASSWORD:
+    MONGO_URI = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DATABASE}?authSource=admin'
+else:
+    MONGO_URI = f'mongodb://{MONGO_HOST}:{MONGO_PORT}'
+
+# Allow direct URI override
+MONGO_URI = os.getenv('MONGO_URI', MONGO_URI)
 
 # Telegram Configuration
 TELEGRAM_API_ID = os.getenv('TELEGRAM_API_ID')

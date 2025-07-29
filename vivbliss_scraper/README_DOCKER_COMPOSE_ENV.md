@@ -102,10 +102,14 @@ config = TelegramConfig.from_compose_file('docker-compose.yml', service_name='te
 
 ### 数据库配置
 
-| 变量名 | 别名 | 描述 |
-|--------|------|------|
-| `MONGO_URI` | `MONGODB_URI`, `DATABASE_URL` | MongoDB 连接字符串 |
-| `MONGO_DATABASE` | `MONGODB_DATABASE` | 数据库名称 |
+| 变量名 | 别名 | 描述 | 示例 |
+|--------|------|------|------|
+| `MONGO_HOST` | - | MongoDB 主机地址 | `localhost` |
+| `MONGO_PORT` | - | MongoDB 端口 | `27017` |
+| `MONGO_USERNAME` | - | MongoDB 用户名（可选） | `admin` |
+| `MONGO_PASSWORD` | - | MongoDB 密码（可选） | `password` |
+| `MONGO_DATABASE` | `MONGODB_DATABASE` | 数据库名称 | `vivbliss_db` |
+| `MONGO_URI` | `MONGODB_URI`, `DATABASE_URL` | MongoDB 完整连接字符串（覆盖上述设置） | `mongodb://user:pass@host:27017/db` |
 
 ## 🖥️ 命令行工具
 
@@ -175,8 +179,13 @@ services:
       - SCHEDULER_JOB_STORE=mongodb
       
       # 数据库配置
-      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USERNAME=admin
+      - MONGO_PASSWORD=password
       - MONGO_DATABASE=vivbliss_db
+      # 或使用完整的 URI
+      # - MONGO_URI=mongodb://admin:password@mongodb:27017/vivbliss_db?authSource=admin
 ```
 
 ### 使用 env_file
@@ -237,10 +246,11 @@ services:
       - SCHEDULER_MAX_WORKERS=5
   
   db:
-    image: mongodb:latest
+    image: mongo:7.0
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=secret
+      - MONGO_INITDB_DATABASE=vivbliss_db
 ```
 
 ## 🔄 优先级顺序

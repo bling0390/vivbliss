@@ -42,8 +42,18 @@ pip install -e .
 Create a `.env` file in the project root:
 
 ```env
-MONGO_URI=mongodb://localhost:27017
+# MongoDB 连接配置
+MONGO_HOST=localhost
+MONGO_PORT=27017
 MONGO_DATABASE=vivbliss_db
+
+# MongoDB 认证（可选）
+# 如果 MongoDB 启用了认证，请取消注释并设置以下变量
+# MONGO_USERNAME=your_username
+# MONGO_PASSWORD=your_password
+
+# 或者使用完整的 MongoDB URI（将覆盖上述设置）
+# MONGO_URI=mongodb://username:password@localhost:27017/vivbliss_db?authSource=admin
 ```
 
 ### Spider Settings
