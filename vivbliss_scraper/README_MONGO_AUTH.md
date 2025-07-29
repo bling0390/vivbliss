@@ -161,6 +161,24 @@ MONGO_URI = os.getenv('MONGO_URI', MONGO_URI)
 
 ## 🔍 故障排除
 
+### 连接测试工具
+
+项目提供了多个工具来测试 MongoDB 连接：
+
+1. **wait_for_mongo.py** - 等待 MongoDB 服务就绪
+   ```bash
+   # 使用默认设置（30次重试，间隔2秒）
+   python3 scripts/wait_for_mongo.py
+   
+   # 自定义重试参数（5次重试，间隔1秒）
+   python3 scripts/wait_for_mongo.py 5 1
+   ```
+
+2. **test_mongo_auth.py** - 完整的连接测试和验证
+   ```bash
+   python3 test_mongo_auth.py
+   ```
+
 ### 连接失败
 
 如果遇到连接问题，请检查：
@@ -169,6 +187,8 @@ MONGO_URI = os.getenv('MONGO_URI', MONGO_URI)
 2. 用户名和密码是否正确
 3. 用户是否有访问指定数据库的权限
 4. `authSource` 参数是否正确（通常是 `admin`）
+
+`wait_for_mongo.py` 现在会显示详细的连接信息和错误提示。
 
 ### 认证失败
 
@@ -185,3 +205,7 @@ MONGO_URI = os.getenv('MONGO_URI', MONGO_URI)
 1. 确保服务名称正确（使用 `mongodb` 而不是 `localhost`）
 2. 检查环境变量是否正确传递到容器
 3. 查看容器日志：`docker-compose logs mongodb`
+4. 使用 `wait_for_mongo.py` 脚本进行连接测试：
+   ```bash
+   docker-compose exec vivbliss-scraper python3 scripts/wait_for_mongo.py
+   ```
