@@ -15,6 +15,7 @@ from vivbliss_scraper.utils.spider_helpers import (
     timing_decorator, error_handler
 )
 from vivbliss_scraper.utils.media_extractor import MediaExtractor, MediaValidator
+from vivbliss_scraper.utils.priority_scheduler import DirectoryPriorityScheduler
 
 
 class VivblissSpider(scrapy.Spider):
@@ -36,6 +37,10 @@ class VivblissSpider(scrapy.Spider):
         self.link_discovery = LinkDiscovery()
         self.media_extractor = MediaExtractor()
         self.media_validator = MediaValidator()
+        
+        # 初始化目录优先级调度器
+        self.priority_scheduler = DirectoryPriorityScheduler()
+        self.logger.info("🎯 目录优先级调度器已初始化")
     
     custom_settings = {
         'DOWNLOAD_DELAY': 2,  # Increased from 1 to 2 seconds
@@ -416,6 +421,41 @@ class VivblissSpider(scrapy.Spider):
                 
                 self.stats_manager.increment('requests_sent')
                 yield request
+        else:
+            self.logger.warning(f'⚠️  未发现任何产品链接')
+    
+    @timing_decorator
+    @error_handler(default_return=[])
+    def discover_products_with_priority(self, response, category_path=None):
+        """使用优先级调度器在页面中发现产品链接"""
+        self.logger.info(f'🛍️  开始搜索产品链接（优先级调度）...')
+        
+        # 使用链接发现工具
+        discovered_links = self.link_discovery.discover_product_links(response)
+        
+        # 记录发现结果
+        LoggingHelper.log_discovery_results(self.logger, '产品', discovered_links)
+        
+        # 更新统计
+        self.stats_manager.increment('products_discovered', len(discovered_links))
+        
+        if discovered_links:
+            # 为每个发现的产品生成请求
+            for link_info in discovered_links:
+                full_url = response.urljoin(link_info['url'])
+                
+                # 使用请求构建器创建请求
+                request = RequestBuilder.build_product_request(
+                    url=full_url,
+                    product_info=link_info,
+                    callback=self.parse_product_with_error_handling,
+                    category_path=category_path
+                )
+                
+                # 通过调度器添加产品请求
+                if self.priority_scheduler.add_product_request(request, category_path or '/default'):
+                    self.stats_manager.increment('requests_sent')
+                    yield request
         else:
             self.logger.warning(f'⚠️  未发现任何产品链接')
     
