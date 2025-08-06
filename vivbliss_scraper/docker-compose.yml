@@ -30,7 +30,10 @@ services:
       mongodb:
         condition: service_healthy
     environment:
-      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USERNAME=${MONGO_USERNAME:-admin}
+      - MONGO_PASSWORD=${MONGO_PASSWORD:-password}
       - MONGO_DATABASE=${MONGO_DATABASE:-vivbliss_db}
       - SCRAPY_LOG_LEVEL=${SCRAPY_LOG_LEVEL:-INFO}
     env_file:
