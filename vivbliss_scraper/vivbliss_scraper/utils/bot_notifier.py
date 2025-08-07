@@ -30,13 +30,15 @@ class BotNotifier:
         """
         self.logger = logging.getLogger(__name__)
         self.chat_id = chat_id
+        # 保存原始的启用状态，用于环境变量测试
+        self._config_enabled = enable_notifications
+        # 实际的启用状态考虑Pyrogram可用性
         self.enable_notifications = enable_notifications and PYROGRAM_AVAILABLE
         self.client: Optional[Client] = None
         self._client_initialized = False
         
         if not PYROGRAM_AVAILABLE:
             self.logger.warning("📵 Pyrogram不可用，Bot通知已禁用")
-            self.enable_notifications = False
     
     async def initialize_client(self) -> bool:
         """
@@ -244,7 +246,8 @@ class BotNotifier:
                   settings.get('TELEGRAM_CHAT_ID') or
                   settings.get('BOT_CHAT_ID'))
         
-        enable_notifications = settings.get('ENABLE_BOT_NOTIFICATIONS', True)
+        # 首先检查环境变量，然后检查设置，最后使用默认值
+        enable_notifications = cls._get_enable_notifications_setting(settings)
         
         # 如果禁用或没有chat_id，则创建禁用的通知器
         if not enable_notifications or not chat_id:
@@ -255,9 +258,65 @@ class BotNotifier:
             enable_notifications=enable_notifications
         )
     
+    @staticmethod
+    def _get_enable_notifications_setting(settings: Dict[str, Any]) -> bool:
+        """
+        获取ENABLE_BOT_NOTIFICATIONS设置值，支持环境变量
+        
+        Args:
+            settings: 设置字典
+            
+        Returns:
+            是否启用通知的布尔值
+        """
+        import os
+        
+        # 如果设置中明确指定，优先使用设置值
+        if 'ENABLE_BOT_NOTIFICATIONS' in settings:
+            return bool(settings['ENABLE_BOT_NOTIFICATIONS'])
+        
+        # 检查环境变量
+        env_value = os.environ.get('ENABLE_BOT_NOTIFICATIONS')
+        if env_value is not None:
+            return BotNotifier._parse_bool_value(env_value)
+        
+        # 默认值为True
+        return True
+    
+    @staticmethod
+    def _parse_bool_value(value: str) -> bool:
+        """
+        解析布尔值字符串
+        
+        Args:
+            value: 字符串值
+            
+        Returns:
+            解析后的布尔值
+        """
+        if not isinstance(value, str):
+            return bool(value)
+        
+        value = value.strip().lower()
+        
+        # True values
+        if value in ('true', '1', 'yes', 'on', 'enabled'):
+            return True
+        
+        # False values
+        if value in ('false', '0', 'no', 'off', 'disabled', ''):
+            return False
+        
+        # For invalid values, default to False for safety
+        return False
+    
     def is_enabled(self) -> bool:
         """检查通知是否启用"""
         return self.enable_notifications
+    
+    def is_config_enabled(self) -> bool:
+        """检查配置级别的通知是否启用（用于测试，不考虑Pyrogram可用性）"""
+        return self._config_enabled
     
     def get_status(self) -> Dict[str, Any]:
         """获取通知器状态"""

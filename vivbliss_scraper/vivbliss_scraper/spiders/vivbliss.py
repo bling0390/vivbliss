@@ -45,6 +45,10 @@ class VivblissSpider(scrapy.Spider):
         
         # 初始化Bot通知器
         settings_dict = getattr(self, 'settings', {}) or kwargs.get('settings', {})
+        # 确保环境变量也被考虑进来
+        if hasattr(settings_dict, 'get'):
+            # Scrapy settings对象
+            settings_dict = dict(settings_dict)
         self.bot_notifier = BotNotifier.create_from_settings(settings_dict)
         if self.bot_notifier.is_enabled():
             self.logger.info("🤖 Bot通知器已初始化并启用")
